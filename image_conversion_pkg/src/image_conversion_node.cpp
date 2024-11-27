@@ -7,34 +7,33 @@
 class ImageConversionNode : public rclcpp::Node {
 public:
     ImageConversionNode() : Node("image_conversion_node") {
-        // Create a shared pointer to the current node for ImageTransport
+
         auto node_ptr = shared_from_this();
         image_transport_ = std::make_shared<image_transport::ImageTransport>(node_ptr);
 
-        // Subscribe to input image topic
+        
         sub_ = image_transport_->subscribe("input_image", 10, 
-            std::bind(&ImageConversionNode::imageCallback, this, std::placeholders::_1));
+            std::bind(&ImageConversionNode::imageCallback, this, std::placeholders::_1));        // Subscribe to input image topic
 
-        // Advertise output image topic
-        pub_ = image_transport_->advertise("output_image", 10);
+        
+        pub_ = image_transport_->advertise("output_image", 10);                                  // Advertise output image topic
     }
 
 private:
     void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
         try {
-            // Convert ROS image message to OpenCV image
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             
-            // Perform image processing (example: convert to grayscale)
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);    // Convert ROS image message to OpenCV image
+            
+            
             cv::Mat gray_image;
-            cv::cvtColor(cv_ptr->image, gray_image, cv::COLOR_BGR2GRAY);
+            cv::cvtColor(cv_ptr->image, gray_image, cv::COLOR_BGR2GRAY);                                   // Convert to grayscale
 
             // Convert processed OpenCV image back to ROS image message
             sensor_msgs::msg::Image::SharedPtr output_msg = 
-                cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, gray_image).toImageMsg();
-
-            // Publish the processed image
-            pub_.publish(output_msg);
+                cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, gray_image).toImageMsg();    
+            
+            pub_.publish(output_msg);                // Publish the processed image
 
         } catch (cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "CV bridge exception: %s", e.what());
