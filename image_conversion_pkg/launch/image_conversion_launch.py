@@ -9,7 +9,7 @@ def generate_launch_description():
             executable='usb_cam_node',
             name='usb_cam',
             parameters=[{
-                'video_device': '/dev/video0',
+                'video_device': '/dev/video0',            #if any issues,try changing this to /dev/video1
                 'image_width': 640,
                 'image_height': 480,
                 'pixel_format': 'mjpeg'
