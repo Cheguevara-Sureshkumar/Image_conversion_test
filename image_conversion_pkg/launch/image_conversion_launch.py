@@ -1,28 +1,33 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from launch.actions import LogInfo
 
 def generate_launch_description():
     return LaunchDescription([
         # USB Camera Node
+        LogInfo(msg="Starting USB Cam Node"),
         Node(
             package='usb_cam',
-            executable='usb_cam_node',
+            executable='usb_cam_node_exe',
             name='usb_cam',
             parameters=[{
-                'video_device': '/dev/video0',            #if any issues,try changing this to /dev/video1
+                'pixel_format': 'yuyv',
+                'video_device': '/dev/video0',
                 'image_width': 640,
                 'image_height': 480,
-                'pixel_format': 'mjpeg'
+                'framerate': 30.0,
+                'camera_calibration_file': ''
             }]
         ),
         
         # Image Conversion Node
+        LogInfo(msg="Starting Image Conversion Node"),
         Node(
             package='image_conversion_pkg',
             executable='image_conversion_node',
             name='image_conversion_node',
             parameters=[{
-                'input_topic': '/usb_cam/image_raw',
+                'input_topic': '/image_raw',
                 'output_topic': '/converted_image'
             }]
         )
