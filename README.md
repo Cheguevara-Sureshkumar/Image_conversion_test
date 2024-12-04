@@ -39,6 +39,13 @@ ros2 service call /change_mode std_srvs/SetBool "{data: true}"      # Change to 
 source install/setup.bash
 ros2 service call /change_mode std_srvs/SetBool "{data: false}"     # Change to Color Mode
 ```
+
+## Image Visualisation
+In a new terminal:
+```bash
+ros2 run rqt_image_view rqt_image_view
+```
+
 ## Node Details
 - Subscribes to input camera topic
 - Provides service to switch between color and grayscale modes
