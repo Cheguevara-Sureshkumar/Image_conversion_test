@@ -33,11 +33,11 @@ ros2 launch image_conversion_pkg image_conversion_launch.py
 Open a new terminal to run:
 ```bash
 source install/setup.bash
-ros2 service call /image_conversion/change_mode std_srvs/SetBool "{data: true}"      # Change to Grayscale Mode
+ros2 service call /change_mode std_srvs/SetBool "{data: true}"      # Change to Grayscale Mode
 ```
 ```bash
 source install/setup.bash
-ros2 service call /image_conversion/change_mode std_srvs/SetBool "{data: false}"     # Change to Color Mode
+ros2 service call /change_mode std_srvs/SetBool "{data: false}"     # Change to Color Mode
 ```
 ## Node Details
 - Subscribes to input camera topic
