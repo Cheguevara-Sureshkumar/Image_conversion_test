@@ -12,6 +12,7 @@ find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(image_transport REQUIRED)
 
+
 # Create executable
 add_executable(image_conversion_node 
   src/image_conversion_node.cpp
