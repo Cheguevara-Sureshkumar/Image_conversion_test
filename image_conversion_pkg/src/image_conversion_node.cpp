@@ -3,51 +3,80 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
+#include <std_srvs/srv/set_bool.hpp>
 
 class ImageConversionNode : public rclcpp::Node {
 public:
-    ImageConversionNode() : Node("image_conversion_node") {
+    ImageConversionNode() : Node("image_conversion_node"), grayscale_mode_(true) {
+        this->declare_parameter<std::string>("input_topic", "/image_raw");
+        this->declare_parameter<std::string>("output_topic", "/converted_image");
 
-        auto node_ptr = shared_from_this();
-        image_transport_ = std::make_shared<image_transport::ImageTransport>(node_ptr);
+        std::string input_topic = this->get_parameter("input_topic").as_string();
+        std::string output_topic = this->get_parameter("output_topic").as_string();
 
+        image_transport_ = std::make_shared<image_transport::ImageTransport>(
+            std::shared_ptr<rclcpp::Node>(this, [](rclcpp::Node*){}));
+
+        sub_ = image_transport_->subscribe(input_topic, 10, 
+            std::bind(&ImageConversionNode::imageCallback, this, std::placeholders::_1));    // Subscriber of the input image
+
+        pub_ = image_transport_->advertise(output_topic, 10);                                // Publisher of the output image
         
-        sub_ = image_transport_->subscribe("input_image", 10, 
-            std::bind(&ImageConversionNode::imageCallback, this, std::placeholders::_1));        // Subscribe to input image topic
-
-        
-        pub_ = image_transport_->advertise("output_image", 10);                                  // Advertise output image topic
+        service_ = this->create_service<std_srvs::srv::SetBool>("change_mode", 
+            std::bind(&ImageConversionNode::changeModeCallback, this, 
+            std::placeholders::_1, std::placeholders::_2)
+        );                                                                                   // Creation of service for conversion
     }
-
-private:
     void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
         try {
+            // Convert ROS Image message to OpenCV format
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
             
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);    // Convert ROS image message to OpenCV image
-            
-            
-            cv::Mat gray_image;
-            cv::cvtColor(cv_ptr->image, gray_image, cv::COLOR_BGR2GRAY);                                   // Convert to grayscale
-
-            // Convert processed OpenCV image back to ROS image message
-            sensor_msgs::msg::Image::SharedPtr output_msg = 
-                cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, gray_image).toImageMsg();    
-            
-            pub_.publish(output_msg);                // Publish the processed image
+            cv::Mat processed_image;
+            if (grayscale_mode_) {
+                
+                cv::cvtColor(cv_ptr->image, processed_image, cv::COLOR_BGR2GRAY);    // Convert the image to grayscale
+                
+                sensor_msgs::msg::Image::SharedPtr output_msg = 
+                    cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, processed_image).toImageMsg();    // Convert OpenCV image back to ROS Image message
+                
+                pub_.publish(output_msg);        // Publish the converted grayscale image
+            } 
+            else {
+                
+                sensor_msgs::msg::Image::SharedPtr output_msg = cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::BGR8, cv_ptr->image).toImageMsg();  // Convert OpenCV image back to ROS Image message
+		        pub_.publish(output_msg);    // Publish the original color image
+            }
 
         } catch (cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "CV bridge exception: %s", e.what());
         }
     }
+    void changeModeCallback(
+        const std_srvs::srv::SetBool::Request::SharedPtr request,
+        const std_srvs::srv::SetBool::Response::SharedPtr response) {
+        
+        grayscale_mode_ = request->data;
+        
+        RCLCPP_INFO(this->get_logger(), "Image conversion mode changed to: %s", 
+                    grayscale_mode_ ? "Grayscale" : "Color");        
+        response->success = true;
+        response->message = grayscale_mode_ ? 
+            "Switched to Grayscale mode" : "Switched to Color mode";
+    }
+private:
+    std::shared_ptr<image_transport::ImageTransport> image_transport_;  
 
-    std::shared_ptr<image_transport::ImageTransport> image_transport_;
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_;
     image_transport::Subscriber sub_;
     image_transport::Publisher pub_;
+    bool grayscale_mode_;
 };
 
 int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<ImageConversionNode>());
+    auto node = std::make_shared<ImageConversionNode>();
+    rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;
 }
