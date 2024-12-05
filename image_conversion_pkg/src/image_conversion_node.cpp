@@ -29,25 +29,30 @@ public:
     }
     void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
         try {
-            // Convert ROS Image message to OpenCV format
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-            
-            cv::Mat processed_image;
-            if (grayscale_mode_) {
-                
-                cv::cvtColor(cv_ptr->image, processed_image, cv::COLOR_BGR2GRAY);    // Convert the image to grayscale
-                
-                sensor_msgs::msg::Image::SharedPtr output_msg = 
-                    cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, processed_image).toImageMsg();    // Convert OpenCV image back to ROS Image message
-                
-                pub_.publish(output_msg);        // Publish the converted grayscale image
-            } 
-            else {
-                
-                sensor_msgs::msg::Image::SharedPtr output_msg = cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::BGR8, cv_ptr->image).toImageMsg();  // Convert OpenCV image back to ROS Image message
-		        pub_.publish(output_msg);    // Publish the original color image
-            }
-
+	    if (msg->encoding != sensor_msgs::image_encodings::BGR8) {
+	            RCLCPP_WARN(this->get_logger(), "Unsupported image encoding: %s", msg->encoding.c_str());
+	            return;
+	    }
+	    else{
+	            // Convert ROS Image message to OpenCV format
+	            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+	            
+	            cv::Mat processed_image;
+	            if (grayscale_mode_) {
+	                
+	                cv::cvtColor(cv_ptr->image, processed_image, cv::COLOR_BGR2GRAY);    // Convert the image to grayscale
+	                
+	                sensor_msgs::msg::Image::SharedPtr output_msg = 
+	                    cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::MONO8, processed_image).toImageMsg();    // Convert OpenCV image back to ROS Image message
+	                
+	                pub_.publish(output_msg);        // Publish the converted grayscale image
+	            } 
+	            else {
+	                
+	                sensor_msgs::msg::Image::SharedPtr output_msg = cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::BGR8, cv_ptr->image).toImageMsg();  // Convert OpenCV image back to ROS Image message
+			        pub_.publish(output_msg);    // Publish the original color image
+	            }
+	    }
         } catch (cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "CV bridge exception: %s", e.what());
         }
